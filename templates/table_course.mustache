@@ -15,17 +15,26 @@
     along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-    @template local_envasyllabus/syllabus_button
+    @template local_envasyllabus/table_course
 
-    This template renders the courses view for the catalog page
+    TODO describe template table_course
 
     Example context (json):
     {
-        "url": "http://moodlesite/course/view.php?id=1"
     }
 }}
-<div id="syllabus-button-{{uniqid}}" class="d-flex text-right">
-    <a class="btn btn-secondary" href="{{url}}">
-        {{#str}}syllabuspage:menu, local_envasyllabus{{/str}}
-    </a>
-</div>
+<tr class="course-row position-relative">
+    <td class="course-column">
+        <a class="stretched-link" href="{{{syllabusurl}}}">
+            {{{shortname}}} {{{displayname}}}
+        </a>
+    </td>
+    <td class="acronym-column">{{cf.uc_acronyme.value}}</td>
+    <td class="responsible-column">{{#managers}}{{fullname}}<span class="separator">, </span>{{/managers}}</td>
+    <td class="ects-column"> {{cf.uc_ects.value}}</td>
+    {{#extendedmodus}}
+        {{#programmevalues}}
+            <td class="column" data-id="{{column}}">{{sum}}</td>
+        {{/programmevalues}}
+    {{/extendedmodus}}
+</tr>

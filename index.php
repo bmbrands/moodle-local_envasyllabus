@@ -32,13 +32,12 @@ global $OUTPUT;
 $PAGE->set_title($title);
 $PAGE->set_url(new moodle_url('/local/enva_syllabus/index.php'));
 $PAGE->set_heading($title);
-$languageswitcher = new \local_envasyllabus\output\language_switcher();
+$languageswitcher = new \local_envasyllabus\output\language_switcher(true);
 $catalog = new \local_envasyllabus\output\catalog($languageswitcher->get_current_langcode());
 $renderer = $PAGE->get_renderer('local_envasyllabus');
 
 $PAGE->set_secondary_navigation(false);
 echo $OUTPUT->header();
-echo $OUTPUT->box($renderer->render($languageswitcher), 'generalbox syllabus-additional-buttons');
 
 $languageswitcher->set_lang();
 echo $renderer->render($catalog);

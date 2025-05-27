@@ -84,10 +84,32 @@
     }
 }
 
+/* Catalog filters */
+.path-local-enva_syllabus div[data-region="catalog-filter"] {
+    .fcontainer label {
+        margin-bottom: 0;
+    }
+    .form-autocomplete-selection {
+        min-height: 0;
+    }
+    /* Hide the 'No selection' text */
+    .form-autocomplete-selection > .m-1.h-5 {
+        display: none;
+    }
+}
+
 /* Catalog page */
 .local-envasyllabus-ccat {
     .cshortname {
         margin-top: -1.5em;
+        background-color: #46185f;
+    }
+
+    .catalog-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1em;
+        margin-bottom: 4rem;
     }
 
     .course-card {
@@ -103,9 +125,60 @@
     .course-img {
         background-size: cover;
     }
-
+    .listheader {
+        background-color: #46185f;
+        color: #fff;
+        margin-bottom: 0;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+    }
     .view-course img {
         width: 1.5em;
         height: 1.5em;
+    }
+    .course-column {
+        width: 50%;
+    }
+    .acronym-column {
+        width: 15%;
+    }
+    .responsible-column {
+        width: 25%;
+        .separator:last-child {
+            display: none;
+        }
+    }
+    .ects-column {
+        width: 10%;
+    }
+    .table-hover {
+        border-collapse: separate;
+        border-spacing: 0;
+        tbody tr {
+            td {
+                border-top: 1px solid transparent;
+                border-bottom: 1px solid transparent;
+                &:first-child {
+                    border-left: 1px solid transparent;
+                }
+                &:last-child {
+                    border-right: 1px solid transparent;
+                }
+            }
+            a {
+                color: #1d2125;
+                &:hover,
+                &:focus {
+                    color: #1d2125;
+                    text-decoration: none;
+                }
+            }
+            &:hover {
+                background-color: rgba(149, 45, 152, 0.1);
+                td {
+                    border-color: rgba(149, 45, 152, 1);
+                }
+            }
+        }
     }
 }

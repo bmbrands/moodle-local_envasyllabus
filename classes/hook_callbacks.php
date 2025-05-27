@@ -42,7 +42,8 @@ class hook_callbacks {
         $context = $PAGE->context;
         if ($context->contextlevel == CONTEXT_COURSE && $context->instanceid != SITEID) {
             if (strpos(trim(strtolower($PAGE->course->shortname)), 'uc') === 0) {
-                $PAGE->requires->js_call_amd('local_envasyllabus/syllabus_button', 'init', [$PAGE->course->id]);
+                $canedit = has_capability('customfield/sprogramme:edit', $context);
+                $PAGE->requires->js_call_amd('local_envasyllabus/syllabus_button', 'init', [$PAGE->course->id, $canedit]);
             }
         }
     }

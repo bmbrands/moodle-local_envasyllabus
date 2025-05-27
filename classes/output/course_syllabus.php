@@ -121,7 +121,8 @@ class course_syllabus implements renderable, templatable {
         $handler = \core_customfield\handler::get_handler('core_course', 'course');
         $cfdata = $handler->get_instance_data($this->courseid, true);
         foreach ($cfdata as $cfdatacontroller) {
-            $customfields[$cfdatacontroller->get_field()->get('shortname')] = $cfdatacontroller->export_value();
+            $shortname = $cfdatacontroller->get_field()->get('shortname');
+            $customfields[$shortname] = $cfdatacontroller->export_value();
         }
 
         // Fetch right title.
@@ -179,7 +180,12 @@ class course_syllabus implements renderable, templatable {
             'description' => $this->get_cf_displayable_info('uc_competences', $cfdata, $output),
         ];
         $contextdata->prerequisites = $this->get_cf_displayable_info('uc_prerequis', $cfdata, $output);
-        $contextdata->programme = $this->get_cf_displayable_info('programme', $cfdata, $output);
+        foreach ($cfdata as $cfdatacontroller) {
+            if ($cfdatacontroller->get_field()->get('shortname') == 'programme') {
+                $contextdata->programme = $cfdatacontroller->export_programme($output);
+                break;
+            }
+        }
         $contextdata->vaq = $this->get_cf_displayable_info('uc_validation', $cfdata, $output);
         $contextdata->additionalinfos = $this->get_cf_displayable_info('uc_infos_compl', $cfdata, $output);
         return $contextdata;
@@ -343,6 +349,7 @@ class course_syllabus implements renderable, templatable {
         if (!empty($this->lang)) {
             $cfname = "{$cfname}_{$this->lang}";
         }
+        $cffieldvalue = '';
         foreach ($cfdata as $cfdatacontroller) {
             if ($cfdatacontroller->get_field()->get('shortname') == $cfname) {
                 $cffieldvalue = $cfdatacontroller->export_value($output);

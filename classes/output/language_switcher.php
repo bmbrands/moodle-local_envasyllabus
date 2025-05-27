@@ -73,6 +73,7 @@ class language_switcher implements renderable, templatable {
         ], $this->currentlang, null
         );
         $singleselect->set_label($pixiconout);
+        $singleselect->id = 'langswitcher';
         return $singleselect->export_for_template($output);
     }
 

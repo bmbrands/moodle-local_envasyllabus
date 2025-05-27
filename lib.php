@@ -73,6 +73,7 @@ function local_envasyllabus_before_standard_top_of_body_html() {
     $context = $PAGE->context;
     if ($context->contextlevel == CONTEXT_COURSE && $context->instanceid != SITEID) {
         if (strpos(trim(strtolower($PAGE->course->shortname)), 'uc') === 0) {
+            $canedit = has_capability('customfield/sprogramme:edit', $context);
             $PAGE->requires->js_call_amd('local_envasyllabus/syllabus_button', 'init', [$PAGE->course->id]);
         }
     }

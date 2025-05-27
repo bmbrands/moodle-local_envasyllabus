@@ -26,6 +26,7 @@ use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
+use customfield_sprogramme\local\api\programme;
 use Exception;
 use local_envasyllabus\visibility;
 use moodle_url;
@@ -131,6 +132,11 @@ class get_filtered_courses extends external_api {
         }
 
         self::sort_courses($filteredcourse, $sort);
+        $columns = programme::get_numeric_columns();
+        return [
+            'courses' => $filteredcourse,
+            'programmecolumns' => self::process_programme_header($columns),
+        ];
         return $filteredcourse;
     }
 
@@ -200,8 +206,11 @@ class get_filtered_courses extends external_api {
             $course->contextid = $courselistelement->get_context()->id;
             $course->categoryid = $course->category;
             unset($course->category);
+            $programmesums = programme::get_sums($course->id);
+            $course->programmevalues = self::process_programme_values($programmesums);
             $course->categoryname = static::get_category_name_for_id($course->categoryid);
             $course->courseimageurl = (new moodle_url('/local/envasyllabus/pix/nocourseimage.jpg'))->out();
+            $course->responsible = self::get_roleusers_for_course($course->id, ['responsablecourse']);
             $overviewfiles = $courselistelement->get_course_overviewfiles();
             if ($overviewfiles) {
                 $file = array_shift($overviewfiles);
@@ -213,17 +222,94 @@ class get_filtered_courses extends external_api {
                 $course->managers = array_map(function($manager) {
                     return [
                         'id' => $manager->id,
-                        'fullname' => $manager->fullname,
+                        'fullname' => fullname($manager),
                     ];
                 }, $course->managers);
             } else {
                 $course->managers = [];
+            }
+            if (!empty($course->responsible)) {
+                $course->responsible = array_map(function($manager) {
+                    return [
+                        'id' => $manager->id,
+                        'fullname' => fullname($manager),
+                    ];
+                }, $course->responsible);
+            } else {
+                $course->responsible = [];
             }
             $courses[$cid] = $course;
         }
         self::map_customfiedls($courses);
         $cache->set($rootcategoryid, $courses);
         return $courses;
+    }
+
+    /**
+     * Process programme header values to return the correct structure.
+     * perso_av and perso_ap are summed up in perso.
+     * @param array $columns
+     * @return array
+     */
+    public static function process_programme_header(array $columns): array {
+        //return $columns;
+        $programmecolumns = [];
+        foreach ($columns as $column) {
+            if ($column['column'] == 'perso_av' || $column['column'] == 'perso_ap') {
+                continue; // Skip perso_av and perso_ap, they will be summed up in perso.
+            }
+            $programmecolumns[] = $column;
+        }
+        $persocolumn = [
+            'columnid' => 0, // This is not a real column id, but we need it to be able to display the column.
+            'column' => 'perso',
+            'label' => 'Perso',
+        ];
+        $totalcolumn = [
+            'columnid' => 0, // This is not a real column id, but we need it to be able to display the column.
+            'column' => 'total',
+            'label' => 'Total',
+        ];
+        $programmecolumns[] = $persocolumn;
+        $programmecolumns[] = $totalcolumn;
+        return $programmecolumns;
+    }
+
+    /**
+     * Process programme values to return the correct structure.
+     * perso_av and perso_ap are summed up in perso.
+     *
+     * @param array $programmesums
+     * @return array
+     */
+    private static function process_programme_values(array $programmesums): array {
+        //return $programmesums;
+        $programmevalues = [];
+        $persosum = 0;
+        $totalvalue = 0;
+        foreach ($programmesums as $column) {
+            if ($column['column'] == 'perso_av' || $column['column'] == 'perso_ap') {
+                $persosum += floatVal($column['sum']);
+            } else {
+                $programmevalues[] = $column;
+            }
+            $totalvalue += floatVal($column['sum']);
+        }
+        $perso = [
+            'columnid' => 0,
+            'column' => 'perso',
+            'label' => 'Perso',
+            'sum' => $persosum,
+        ];
+        $total = [
+            'columnid' => 0,
+            'column' => 'total',
+            'label' => 'Total',
+            'sum' => $totalvalue,
+        ];
+        $programmevalues[] = $perso;
+        $programmevalues[] = $total;
+        return $programmevalues;
     }
 
     /**
@@ -342,48 +428,89 @@ class get_filtered_courses extends external_api {
     }
 
     /**
+     * Get users matching the teacher role.
+     *
+     * @param int $courseid
+     * @param array $rolesname
+     * @return array
+     */
+    protected static function get_roleusers_for_course(int $courseid, array $rolesname): array {
+        global $DB;
+        [$where, $params] = $DB->get_in_or_equal($rolesname);
+        $teacherroles = $DB->get_fieldset_select('role', 'id', 'shortname ' . $where, $params);
+        if (!empty($teacherroles)) {
+            $userfieldsapi = \core_user\fields::for_userpic()->including('username', 'deleted');
+            $userfields = 'ra.id, u.id, u.username' . $userfieldsapi->get_sql('u')->selects;
+            return get_role_users($teacherroles, \context_course::instance($courseid), true, $userfields);
+        } else {
+            return [];
+        }
+    }
+
+    /**
      * Returns description of method result value
      *
      * @return external_description|external_multiple_structure
      */
     public static function execute_returns() {
-        return new external_multiple_structure(
-            new external_single_structure(
-                [
-                    'id' => new external_value(PARAM_INT, 'course id'),
-                    'fullname' => new external_value(PARAM_RAW, 'course full name'),
-                    'displayname' => new external_value(PARAM_RAW, 'course display name'),
-                    'visible' => new external_value(PARAM_BOOL, 'is course visible', VALUE_OPTIONAL, false),
-                    'shortname' => new external_value(PARAM_RAW, 'course short name'),
-                    'categoryid' => new external_value(PARAM_INT, 'category id'),
-                    'categoryname' => new external_value(PARAM_RAW, 'category name'),
-                    'sortorder' => new external_value(PARAM_INT, 'Sort order in the category', VALUE_OPTIONAL),
-                    'smallsummarytext' => new external_value(PARAM_RAW, 'smallsummarytext'),
-                    'managers' => new external_multiple_structure(
-                        new external_single_structure(
-                            [
-                                'id' => new external_value(PARAM_INT, 'contact user id'),
-                                'fullname' => new external_value(PARAM_NOTAGS, 'contact user fullname'),
-                            ]
+        return new external_single_structure([
+            'courses' => new external_multiple_structure(
+                new external_single_structure(
+                    [
+                        'id' => new external_value(PARAM_INT, 'course id'),
+                        'fullname' => new external_value(PARAM_RAW, 'course full name'),
+                        'displayname' => new external_value(PARAM_RAW, 'course display name'),
+                        'visible' => new external_value(PARAM_BOOL, 'is course visible', VALUE_OPTIONAL, false),
+                        'shortname' => new external_value(PARAM_RAW, 'course short name'),
+                        'categoryid' => new external_value(PARAM_INT, 'category id'),
+                        'categoryname' => new external_value(PARAM_RAW, 'category name'),
+                        'sortorder' => new external_value(PARAM_INT, 'Sort order in the category', VALUE_OPTIONAL),
+                        'smallsummarytext' => new external_value(PARAM_RAW, 'smallsummarytext'),
+                        'managers' => new external_multiple_structure(
+                            new external_single_structure(
+                                [
+                                    'id' => new external_value(PARAM_INT, 'contact user id'),
+                                    'fullname' => new external_value(PARAM_NOTAGS, 'contact user fullname'),
+                                ]
+                            ),
+                            'contact users'
                         ),
-                        'contact users'
-                    ),
-                    'customfields' => new external_multiple_structure(
-                        new external_single_structure(
-                            [
-                                'name' => new external_value(PARAM_RAW, 'The name of the custom field'),
-                                'shortname' => new external_value(PARAM_RAW,
-                                    'The shortname of the custom field - to be able to build the field class in the code'),
-                                'type' => new external_value(PARAM_ALPHANUMEXT,
-                                    'The type of the custom field - text field, checkbox...'),
-                                'value' => new external_value(PARAM_RAW, 'The value of the custom field'),
-                            ]
-                        ),
-                        'Custom fields', VALUE_OPTIONAL),
-                    'courseimageurl' => new external_value(PARAM_URL, 'image url', VALUE_OPTIONAL),
-                ]
-            )
-        );
+                        'programmevalues' => new external_multiple_structure(
+                            new external_single_structure(
+                                [
+                                    'columnid' => new external_value(PARAM_INT, 'The id of the custom field'),
+                                    'column' => new external_value(PARAM_RAW, 'The name of the custom field'),
+                                    'label' => new external_value(PARAM_RAW, 'The shortname of the custom field'),
+                                    'sum' => new external_value(PARAM_INT, 'The value of the custom field'),
+                                ]
+                            ),
+                            'Custom fields', VALUE_OPTIONAL),
+                        'customfields' => new external_multiple_structure(
+                            new external_single_structure(
+                                [
+                                    'name' => new external_value(PARAM_RAW, 'The name of the custom field'),
+                                    'shortname' => new external_value(PARAM_RAW,
+                                        'The shortname of the custom field - to be able to build the field class in the code'),
+                                    'type' => new external_value(PARAM_ALPHANUMEXT,
+                                        'The type of the custom field - text field, checkbox...'),
+                                    'value' => new external_value(PARAM_RAW, 'The value of the custom field'),
+                                ]
+                            ),
+                            'Custom fields', VALUE_OPTIONAL),
+                        'courseimageurl' => new external_value(PARAM_URL, 'image url', VALUE_OPTIONAL),
+                    ]
+                )
+            ),
+            'programmecolumns' => new external_multiple_structure(
+                new external_single_structure(
+                    [
+                        'columnid' => new external_value(PARAM_INT, 'The id of the custom field'),
+                        'column' => new external_value(PARAM_RAW, 'The name of the custom field'),
+                        'label' => new external_value(PARAM_RAW, 'The shortname of the custom field '),
+                    ]
+                )
+            ),
+        ]);
     }
 
 }
