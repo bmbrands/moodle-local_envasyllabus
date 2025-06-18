@@ -20,6 +20,7 @@ use core_course\external\course_summary_exporter;
 use core_course_category;
 use local_competvetsuivi\matrix\matrix;
 use local_envasyllabus\visibility;
+use customfield_sprogramme\local\api\programme;
 use moodle_exception;
 use renderable;
 use renderer_base;
@@ -55,18 +56,18 @@ class course_syllabus implements renderable, templatable {
             'fields' => [
                 ['type' => 'categorysum', 'languagestring' => 'syllabuspage:student_total_hours', 'class' => 'highlighted-top',
                     'fields' => [
-                        ['type' => 'cf', 'fieldname' => 'uc_heures_cm_etudiant'],
-                        ['type' => 'cf', 'fieldname' => 'uc_heures_td_etudiant'],
-                        ['type' => 'cf', 'fieldname' => 'uc_heures_tp_etudiant'],
-                        ['type' => 'cf', 'fieldname' => 'uc_heures_tpa_etudiant'],
-                        ['type' => 'cf', 'fieldname' => 'uc_heures_tc_etudiant'],
-                        ['type' => 'cf', 'fieldname' => 'uc_heures_fmp_etudiant'],
+                        ['type' => 'cf', 'fieldname' => 'uc_heures_cm_etudiant', 'programmenames' => 'cm'],
+                        ['type' => 'cf', 'fieldname' => 'uc_heures_td_etudiant', 'programmenames' => 'td'],
+                        ['type' => 'cf', 'fieldname' => 'uc_heures_tp_etudiant', 'programmenames' => 'tp'],
+                        ['type' => 'cf', 'fieldname' => 'uc_heures_tpa_etudiant', 'programmenames' => 'tpa'],
+                        ['type' => 'cf', 'fieldname' => 'uc_heures_tc_etudiant', 'programmenames' => 'tc'],
+                        ['type' => 'cf', 'fieldname' => 'uc_heures_fmp_etudiant', 'programmenames' => 'fmp'],
                     ],
                 ],
                 ['type' => 'categorysum', 'languagestring' => 'syllabuspage:student_total_hours_he', 'class' => 'highlighted-top',
                     'fields' => [
-                        ['type' => 'cf', 'fieldname' => 'uc_heures_he_aas_etudiant'],
-                        ['type' => 'cf', 'fieldname' => 'uc_heures_he_tpers_etudiant'],
+                        ['type' => 'cf', 'fieldname' => 'uc_heures_he_aas_etudiant', 'programmenames' => 'aas'],
+                        ['type' => 'cf', 'fieldname' => 'uc_heures_he_tpers_etudiant', 'programmenames' => 'perso_av, perso_ap'],
                     ],
                 ],
             ],
@@ -109,7 +110,7 @@ class course_syllabus implements renderable, templatable {
      * @return array|stdClass|void
      */
     public function export_for_template(renderer_base $output) {
-        global $DB, $CFG;
+        global $DB, $CFG, $PAGE;
         $currentlang = current_language();
         $contextdata = new stdClass();
         $course = $DB->get_record('course', ['id' => $this->courseid]);
@@ -180,12 +181,13 @@ class course_syllabus implements renderable, templatable {
             'description' => $this->get_cf_displayable_info('uc_competences', $cfdata, $output),
         ];
         $contextdata->prerequisites = $this->get_cf_displayable_info('uc_prerequis', $cfdata, $output);
-        foreach ($cfdata as $cfdatacontroller) {
-            if ($cfdatacontroller->get_field()->get('shortname') == 'programme') {
-                $contextdata->programme = $cfdatacontroller->export_programme($output);
-                break;
-            }
-        }
+
+        $programme = new \customfield_sprogramme\output\programme($this->courseid);
+        $renderer = $PAGE->get_renderer('customfield_sprogramme');
+        $formfield = new \customfield_sprogramme\output\formfield();
+        $programmehtml = $renderer->render($formfield) . $renderer->render($programme);
+        $contextdata->programme = $programmehtml;
+
         $contextdata->vaq = $this->get_cf_displayable_info('uc_validation', $cfdata, $output);
         $contextdata->additionalinfos = $this->get_cf_displayable_info('uc_infos_compl', $cfdata, $output);
         return $contextdata;
@@ -220,6 +222,10 @@ class course_syllabus implements renderable, templatable {
      * @throws \coding_exception
      */
     protected function get_header_data(array $fieldinfolist, array $customfields): array {
+        $programmetotals = [];
+        // $programmetotals = programme::get_column_totals($this->courseid);
+
+        $hasprogramme = programme::has_data($this->courseid);
         $headerdata = [];
         foreach ($fieldinfolist as $fieldinfo) {
             if (!empty($fieldinfo['type'])) {
@@ -236,6 +242,9 @@ class course_syllabus implements renderable, templatable {
                     case 'cf':
                         $fieldname = $fieldinfo['fieldname'];
                         $headerinfo->value = empty($customfields[$fieldname]) ? '-' : $customfields[$fieldname];
+                        if (isset($fieldinfo['programmenames']) && $hasprogramme) {
+                            $headerinfo->value = $this->get_programme_sum($fieldinfo['programmenames'], $programmetotals);
+                        }
                         $headerdata[] = $headerinfo;
                         break;
                     case 'categorysum':
@@ -253,6 +262,27 @@ class course_syllabus implements renderable, templatable {
             }
         }
         return $headerdata;
+    }
+
+    /**
+     * Get programme sum
+     *
+     * @param string $programmenames
+     * @param array $programmetotals
+     * @return string
+     */
+    protected function get_programme_sum(string $programmenames, array $programmetotals): string {
+        if (empty($programmenames)) {
+            return '';
+        }
+        $programmmenames = explode(',', $programmenames);
+        $sum = 0;
+        foreach ($programmmenames as $programmename) {
+            if (isset($programmetotals[$programmename])) {
+                $sum += $programmetotals[$programmename]['sum'];
+            }
+        }
+        return $sum > 0 ? (string)$sum : '-';
     }
 
     /**

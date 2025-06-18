@@ -26,6 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['aria:courseimage'] = 'Course image';
+$string['cachedef_filteredcourses'] = 'Filtered courses cache';
 $string['catalog:filter_sort'] = 'Filters and Sorts';
 $string['catalog:index'] = 'Catalog';
 $string['cf:uc_annee'] = 'Year';

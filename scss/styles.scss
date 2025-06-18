@@ -104,7 +104,9 @@
         margin-top: -1.5em;
         background-color: #46185f;
     }
-
+    tr.course-row {
+        display: table-row;
+    }
     .catalog-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
