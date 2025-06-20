@@ -283,7 +283,6 @@ class get_filtered_courses extends external_api {
      * @return array
      */
     private static function process_programme_values(array $programmesums): array {
-        //return $programmesums;
         $programmevalues = [];
         $persosum = 0;
         $totalvalue = 0;
