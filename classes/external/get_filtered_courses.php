@@ -506,6 +506,7 @@ class get_filtered_courses extends external_api {
                         'columnid' => new external_value(PARAM_INT, 'The id of the custom field'),
                         'column' => new external_value(PARAM_RAW, 'The name of the custom field'),
                         'label' => new external_value(PARAM_RAW, 'The shortname of the custom field '),
+                        'help' => new external_value(PARAM_RAW, 'The help text for the custom field', VALUE_OPTIONAL, ''),
                     ]
                 )
             ),

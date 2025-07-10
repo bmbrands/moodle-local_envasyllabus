@@ -223,7 +223,9 @@ class course_syllabus implements renderable, templatable {
      */
     protected function get_header_data(array $fieldinfolist, array $customfields): array {
         $programmetotals = [];
-        // $programmetotals = programme::get_column_totals($this->courseid);
+        $data = programme::get_data($this->courseid);
+        $columnstructure = programme::get_column_structure($this->courseid);
+        $programmetotals = programme::get_column_totals($data, $columnstructure);
 
         $hasprogramme = programme::has_data($this->courseid);
         $headerdata = [];
@@ -278,9 +280,10 @@ class course_syllabus implements renderable, templatable {
         $programmmenames = explode(',', $programmenames);
         $sum = 0;
         foreach ($programmmenames as $programmename) {
-            if (isset($programmetotals[$programmename])) {
-                $sum += $programmetotals[$programmename]['sum'];
-            }
+            $sum += array_reduce($programmetotals, function ($carry, $item) use ($programmename) {
+                return $item['column'] == $programmename ? $item['sum'] : $carry;
+            }, 0);
+
         }
         return $sum > 0 ? (string)$sum : '-';
     }

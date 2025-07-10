@@ -156,6 +156,10 @@
     .table-hover {
         border-collapse: separate;
         border-spacing: 0;
+        th.hashelp {
+            text-decoration: underline;
+            cursor: pointer;
+        }
         tbody tr {
             td {
                 border-top: 1px solid transparent;

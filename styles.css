@@ -163,6 +163,11 @@
     border-spacing: 0;
 }
 
+.local-envasyllabus-ccat .table-hover th.hashelp {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .local-envasyllabus-ccat .table-hover tbody tr td {
     border-top: 1px solid transparent;
     border-bottom: 1px solid transparent;
